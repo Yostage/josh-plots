@@ -1,6 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy import stats
+from colors import CONTROL, TREATMENT
 
 def parse_bench(path):
     data = {}
@@ -40,7 +41,7 @@ axes = axes.flatten()
 
 for i, L in enumerate(lengths):
     ax = axes[i]
-    for label, samples, color in [("128-bit", d128[L], '#1f77b4'), ("256-bit", d256[L], '#ff7f0e')]:
+    for label, samples, color in [("128-bit", d128[L], CONTROL), ("256-bit", d256[L], TREATMENT)]:
         xs = np.sort(samples)
         ys = np.arange(1, len(xs) + 1) / len(xs)
         ax.step(xs, ys, where='post', color=color, linewidth=1.5, label=label)
@@ -70,7 +71,7 @@ axes2 = axes2.flatten()
 
 for i, L in enumerate(lengths):
     ax = axes2[i]
-    for label, samples, color in [("128-bit", d128[L], '#1f77b4'), ("256-bit", d256[L], '#ff7f0e')]:
+    for label, samples, color in [("128-bit", d128[L], CONTROL), ("256-bit", d256[L], TREATMENT)]:
         kde = stats.gaussian_kde(samples)
         lo, hi = samples.min() - 5, samples.max() + 5
         xs = np.linspace(lo, hi, 200)

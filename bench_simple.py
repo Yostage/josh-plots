@@ -1,6 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy import stats
+from colors import CONTROL, TREATMENT
 
 def parse_bench(path):
     data = {}
@@ -50,9 +51,9 @@ labels = [str(L) for L in lengths]
 
 # Top: absolute times with CIs
 ax1.errorbar(x - 0.15, means_128, yerr=[means_128 - ci_lo_128, ci_hi_128 - means_128],
-             fmt='o-', capsize=4, label='128-bit loads', color='#1f77b4')
+             fmt='o-', capsize=4, label='128-bit loads', color=CONTROL)
 ax1.errorbar(x + 0.15, means_256, yerr=[means_256 - ci_lo_256, ci_hi_256 - means_256],
-             fmt='s-', capsize=4, label='256-bit loads', color='#ff7f0e')
+             fmt='s-', capsize=4, label='256-bit loads', color=TREATMENT)
 ax1.set_ylabel("Time (units from benchmark)")
 ax1.set_title("AVX/FMA f32 Benchmark: 128-bit vs 256-bit loads")
 ax1.legend()

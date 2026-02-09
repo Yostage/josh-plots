@@ -1,5 +1,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
+from colors import CONTROL, CONTROL_DARK, TREATMENT
 
 def parse_bench(path):
     data = {}
@@ -31,17 +32,17 @@ for i, L in enumerate(lengths):
     x128 = np.arange(n128)
     x256 = np.arange(n256)
 
-    ax.scatter(x128, d128[L], s=12, alpha=0.5, color='#1f77b4', label='128-bit', zorder=2)
-    ax.scatter(x256, d256[L], s=12, alpha=0.5, color='#ff7f0e', label='256-bit', zorder=2)
+    ax.scatter(x128, d128[L], s=12, alpha=0.5, color=CONTROL, label='128-bit', zorder=2)
+    ax.scatter(x256, d256[L], s=12, alpha=0.5, color=TREATMENT, label='256-bit', zorder=2)
 
     # Rolling mean (window=10) to show trend
     w = 10
     if n128 >= w:
         rm128 = np.convolve(d128[L], np.ones(w)/w, mode='valid')
-        ax.plot(np.arange(w-1, n128), rm128, color='#1f77b4', linewidth=1.5, zorder=3)
+        ax.plot(np.arange(w-1, n128), rm128, color=CONTROL_DARK, linewidth=1.5, zorder=3)
     if n256 >= w:
         rm256 = np.convolve(d256[L], np.ones(w)/w, mode='valid')
-        ax.plot(np.arange(w-1, n256), rm256, color='#ff7f0e', linewidth=1.5, zorder=3)
+        ax.plot(np.arange(w-1, n256), rm256, color=TREATMENT, linewidth=1.5, zorder=3)
 
     ax.set_title(f"Length {L:,}", fontsize=10, fontweight='bold')
     ax.grid(True, alpha=0.2)
