@@ -3,12 +3,12 @@
 DATA_COLORS = [
     '#888888',
     '#ff7f0e', # vivid tangerine
-    '#CA1E32', # intense cherry
-    '#BF3BD4', # vivid orchid
-    '#266AE8', # royal blue
+    '#ca1e32', # intense cherry
+    '#bf3bd4', # vivid orchid
+    '#266ae8', # royal blue
     '#09e85e', # malachite
     '#36f1cd', # aquamarine
-    '#D2C210', # golden glow
+    '#d2c210', # golden glow
   ]
 
 # using YIQ instead of something like HSV/HSL because imo it's simpler: https://en.wikipedia.org/wiki/YIQ
