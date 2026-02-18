@@ -62,7 +62,8 @@ nrows = (len(lengths) + ncols - 1) // ncols
 
 
 def vs_label():
-    return f"'{control.label}' vs {f"'{treatments[0].label}'" if len(treatments) == 1 else "multiple"}"
+    other = f"'{treatments[0].label}'" if len(treatments) == 1 else "multiple"
+    return f"'{control.label}' vs {other}"
 
 def make_output_path(suffixWithExt):
     if args.output_dir:
@@ -117,7 +118,7 @@ xlabels = [str(L) for L in lengths]
 ax1.errorbar(x - 0.15, means_ctrl, yerr=[means_ctrl - ci_lo_ctrl, ci_hi_ctrl - means_ctrl],
              fmt='o-', capsize=4, label=control.label, color=DATA_COLORS[0])
 
-for (treatment, color) in ((treatments[i], DATA_COLORS[i + 1]) for i in range(len(treatments))):
+for (treatment, color) in ((treatments[ti], DATA_COLORS[ti + 1]) for ti in range(len(treatments))):
   means_tmnt, ci_lo_tmnt, ci_hi_tmnt = make_simple(treatment)
   ax1.errorbar(x + 0.15, means_tmnt, yerr=[means_tmnt - ci_lo_tmnt, ci_hi_tmnt - means_tmnt],
               fmt='s-', capsize=4, label=treatment.label, color=color)
@@ -128,7 +129,7 @@ ax1.grid(True, alpha=0.3)
 ax1.set_xticks(x)
 ax1.set_xticklabels(xlabels, rotation=45, ha='right')
 
-for (treatment, color) in ((treatments[i], DATA_COLORS[i + 1]) for i in range(len(treatments))):
+for (treatment, color) in ((treatments[ti], DATA_COLORS[ti + 1]) for ti in range(len(treatments))):
     diffs, diff_ci_lo, diff_ci_hi = [], [], []
     for L in lengths:
         a, b = control.data[L], treatment.data[L]
@@ -148,7 +149,8 @@ for (treatment, color) in ((treatments[i], DATA_COLORS[i + 1]) for i in range(le
     ax2.errorbar(x, diffs, yerr=[diffs - diff_ci_lo, diff_ci_hi - diffs],
                  fmt='D-', capsize=4, color=color)
 ax2.axhline(0, color='black', linewidth=0.8, linestyle='--')
-ax2.set_ylabel(f"Difference ({"treatments" if len(treatments) > 1 else f"'{treatments[0].label}'"} minus '{control.label}')")
+diff_label = "treatments" if len(treatments) > 1 else f"'{treatments[0].label}'"
+ax2.set_ylabel(f"Difference ({diff_label} minus '{control.label}')")
 ax2.set_xlabel("Array Length")
 ax2.set_title(f"Mean Difference with 95% CI (positive = slower than control)")
 ax2.grid(True, alpha=0.3)
@@ -220,14 +222,17 @@ ax.legend(handles=[
 ], loc='lower right', fontsize=9, framealpha=0.9)
 
 plt.tight_layout()
-save_fig(plt, "comparision.png")
+save_fig(plt, "comparison.png")
 
 print(f"\n{'Metric':<16} {'Control':>8} {'Treatment':>10} {'% Diff':>8} {'95% CI':>20} {'p':>8} {'Sig':>4}")
 print("-" * 80)
-for i, L in enumerate(lengths):
+idx = 0
+for L in lengths:
     mc = np.mean(control.data[L])
-    mt = np.mean(treatments[0].data[L])
-    print(f"Length {L:<8,} {mc:>8.1f} {mt:>10.1f} {pct_diffs[i]:>+7.1f}% [{pct_ci_lo[i]:>+6.1f}%, {pct_ci_hi[i]:>+5.1f}%] {p_values[i]:>8.4f} {'*' if significant[i] else ''}")
+    for treatment in treatments:
+        mt = np.mean(treatment.data[L])
+        print(f"Length {L:<8,} {mc:>8.1f} {mt:>10.1f} {pct_diffs[idx]:>+7.1f}% [{pct_ci_lo[idx]:>+6.1f}%, {pct_ci_hi[idx]:>+5.1f}%] {p_values[idx]:>8.4f} {'*' if significant[idx] else ''}")
+        idx += 1
 
 # ============================================================
 # 4. Time series scatter
@@ -241,7 +246,7 @@ for i, L in enumerate(lengths):
 
     ax.scatter(np.arange(n_ctrl), control.data[L], s=12, alpha=0.5, color=DATA_COLORS[0], label=control.label, zorder=2)
 
-    for (treatment, color) in ((treatments[i], DATA_COLORS[i + 1]) for i in range(len(treatments))):
+    for (treatment, color) in ((treatments[ti], DATA_COLORS[ti + 1]) for ti in range(len(treatments))):
         nt = len(treatment.data[L])
         ax.scatter(np.arange(nt), treatment.data[L], s=12, alpha=0.5, color=color, label=treatment.label, zorder=2)
 
@@ -250,7 +255,7 @@ for i, L in enumerate(lengths):
         rmc = np.convolve(control.data[L], np.ones(w)/w, mode='valid')
         ax.plot(np.arange(w-1, n_ctrl), rmc, color=deemphasize_color(DATA_COLORS[0]), linewidth=1.5, zorder=3)
 
-    for (treatment, color) in ((treatments[i], DATA_COLORS[i + 1]) for i in range(len(treatments))):
+    for (treatment, color) in ((treatments[ti], DATA_COLORS[ti + 1]) for ti in range(len(treatments))):
         nt = len(treatment.data[L])
         if nt >= w:
             rmt = np.convolve(treatment.data[L], np.ones(w)/w, mode='valid')
@@ -284,7 +289,7 @@ for i, L in enumerate(lengths):
     ax = axes[i]
     for label, samples, color in [
         (control.label, control.data[L], DATA_COLORS[0]), 
-        *((treatments[i].label, treatments[i].data[L], DATA_COLORS[i + 1]) for i in range(len(treatments)))
+        *((treatments[ti].label, treatments[ti].data[L], DATA_COLORS[ti + 1]) for ti in range(len(treatments)))
     ]:
         xs = np.sort(samples)
         ys = np.arange(1, len(xs) + 1) / len(xs)
@@ -318,7 +323,7 @@ for i, L in enumerate(lengths):
     ax = axes[i]
     for label, samples, color in [
         (control.label, control.data[L], DATA_COLORS[0]), 
-        *((treatments[i].label, treatments[i].data[L], DATA_COLORS[i + 1]) for i in range(len(treatments)))
+        *((treatments[ti].label, treatments[ti].data[L], DATA_COLORS[ti + 1]) for ti in range(len(treatments)))
     ]:
         kde = stats.gaussian_kde(samples)
         lo, hi = samples.min() - 5, samples.max() + 5
