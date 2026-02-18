@@ -148,7 +148,7 @@ for (treatment, color) in ((treatments[i], DATA_COLORS[i + 1]) for i in range(le
     ax2.errorbar(x, diffs, yerr=[diffs - diff_ci_lo, diff_ci_hi - diffs],
                  fmt='D-', capsize=4, color=color)
 ax2.axhline(0, color='black', linewidth=0.8, linestyle='--')
-ax2.set_ylabel(f"Difference ({"treatments" if len(treatments) > 1 else f"'{treatments[0].label}'"} minus '{control.label}'")
+ax2.set_ylabel(f"Difference ({"treatments" if len(treatments) > 1 else f"'{treatments[0].label}'"} minus '{control.label}')")
 ax2.set_xlabel("Array Length")
 ax2.set_title(f"Mean Difference with 95% CI (positive = slower than control)")
 ax2.grid(True, alpha=0.3)
