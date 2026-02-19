@@ -57,6 +57,19 @@ maxLabelLength = max([len(x.label) for x in [control, *treatments]])
 
 lengths = sorted(control.data.keys())
 alpha = 0.05
+
+def welch_ci(a, b, alpha):
+    """Compute mean difference and CI between two samples, handling zero-variance."""
+    d = np.mean(b) - np.mean(a)
+    se = np.sqrt(stats.sem(a)**2 + stats.sem(b)**2)
+    if se == 0:
+        return d, d, d
+    denom = stats.sem(a)**4 / (len(a)-1) + stats.sem(b)**4 / (len(b)-1)
+    if denom == 0:
+        return d, d, d
+    df_w = (stats.sem(a)**2 + stats.sem(b)**2)**2 / denom
+    t_crit = stats.t.ppf(1 - alpha/2, df_w)
+    return d, d - t_crit * se, d + t_crit * se
 ncols = 3
 nrows = (len(lengths) + ncols - 1) // ncols
 
@@ -132,15 +145,10 @@ ax1.set_xticklabels(xlabels, rotation=45, ha='right')
 for (treatment, color) in ((treatments[ti], DATA_COLORS[ti + 1]) for ti in range(len(treatments))):
     diffs, diff_ci_lo, diff_ci_hi = [], [], []
     for L in lengths:
-        a, b = control.data[L], treatment.data[L]
-        d = np.mean(b) - np.mean(a)
-        se = np.sqrt(stats.sem(a)**2 + stats.sem(b)**2)
-        df_w = (stats.sem(a)**2 + stats.sem(b)**2)**2 / (
-            stats.sem(a)**4 / (len(a)-1) + stats.sem(b)**4 / (len(b)-1))
-        t_crit = stats.t.ppf(1 - alpha/2, df_w)
+        d, lo, hi = welch_ci(control.data[L], treatment.data[L], alpha)
         diffs.append(d)
-        diff_ci_lo.append(d - t_crit * se)
-        diff_ci_hi.append(d + t_crit * se)
+        diff_ci_lo.append(lo)
+        diff_ci_hi.append(hi)
 
     diffs = np.array(diffs)
     diff_ci_lo = np.array(diff_ci_lo)
@@ -169,12 +177,7 @@ for L in lengths:
     for (treatmentIndex, treatment, base_color) in ((i, treatments[i], DATA_COLORS[i + 1]) for i in range(len(treatments))):
         ctrl, treat = control.data[L], treatment.data[L]
         mc, mt = np.mean(ctrl), np.mean(treat)
-        se = np.sqrt(stats.sem(ctrl)**2 + stats.sem(treat)**2)
-        df_w = (stats.sem(ctrl)**2 + stats.sem(treat)**2)**2 / (
-            stats.sem(ctrl)**4 / (len(ctrl)-1) + stats.sem(treat)**4 / (len(treat)-1))
-        t_crit = stats.t.ppf(1 - alpha/2, df_w)
-        diff_lo = (mt - mc) - t_crit * se
-        diff_hi = (mt - mc) + t_crit * se
+        d, diff_lo, diff_hi = welch_ci(ctrl, treat, alpha)
 
         pct_diffs.append((mt - mc) / mc * 100)
         pct_ci_lo.append(diff_lo / mc * 100)
@@ -325,11 +328,15 @@ for i, L in enumerate(lengths):
         (control.label, control.data[L], DATA_COLORS[0]), 
         *((treatments[ti].label, treatments[ti].data[L], DATA_COLORS[ti + 1]) for ti in range(len(treatments)))
     ]:
-        kde = stats.gaussian_kde(samples)
-        lo, hi = samples.min() - 5, samples.max() + 5
-        xs = np.linspace(lo, hi, 200)
-        ax.plot(xs, kde(xs), color=color, linewidth=1.5, label=label)
-        ax.fill_between(xs, kde(xs), alpha=0.15, color=color)
+        if np.std(samples) == 0:
+            # Zero variance: draw a vertical line at the constant value
+            ax.axvline(samples[0], color=color, linewidth=1.5, label=label)
+        else:
+            kde = stats.gaussian_kde(samples)
+            lo, hi = samples.min() - 5, samples.max() + 5
+            xs = np.linspace(lo, hi, 200)
+            ax.plot(xs, kde(xs), color=color, linewidth=1.5, label=label)
+            ax.fill_between(xs, kde(xs), alpha=0.15, color=color)
 
     ax.set_title(f"Length {L:,}", fontsize=10, fontweight='bold')
     ax.set_ylabel("Density", fontsize=8)
