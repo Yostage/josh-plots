@@ -353,3 +353,167 @@ fig.suptitle(f"KDE Density: {vs_label()}",
              fontsize=13, fontweight='bold', y=1.01)
 plt.tight_layout()
 save_fig(plt, "kde.png")
+
+# ============================================================
+# 7. Heatmap vs Control
+# ============================================================
+heatmap_data = np.zeros((len(lengths), len(treatments)))
+for i, L in enumerate(lengths):
+    mc = np.mean(control.data[L])
+    for j, treatment in enumerate(treatments):
+        mt = np.mean(treatment.data[L])
+        heatmap_data[i, j] = (mt - mc) / mc * 100
+
+fig, ax = plt.subplots(figsize=(max(8, len(treatments) * 1.5 + 2), max(4, len(lengths) * 0.6 + 2)))
+vmax = max(abs(heatmap_data.min()), abs(heatmap_data.max()))
+im = ax.imshow(heatmap_data, cmap='RdYlGn_r', aspect='auto', vmin=-vmax, vmax=vmax)
+for i in range(len(lengths)):
+    best_j = int(np.argmin(heatmap_data[i]))
+    for j in range(len(treatments)):
+        ax.text(j, i, f"{heatmap_data[i, j]:+.1f}%", ha='center', va='center', fontsize=9,
+                color='white' if abs(heatmap_data[i, j]) > vmax * 0.6 else 'black')
+        if j == best_j:
+            ax.add_patch(plt.Rectangle((j - 0.5, i - 0.5), 1, 1, fill=False,
+                                       edgecolor='black', linewidth=5, zorder=2))
+            ax.add_patch(plt.Rectangle((j - 0.5, i - 0.5), 1, 1, fill=False,
+                                       edgecolor='white', linewidth=3, zorder=3))
+ax.set_xticks(range(len(treatments)))
+ax.set_xticklabels([t.label for t in treatments], rotation=45, ha='right')
+ax.set_yticks(range(len(lengths)))
+ax.set_yticklabels([str(L) for L in lengths])
+ax.set_xlabel("Treatment")
+ax.set_ylabel("Array Length")
+ax.set_title(f"% Change vs Control ('{control.label}')\nGreen = faster, Red = slower", fontweight='bold')
+fig.colorbar(im, ax=ax, label='% change', shrink=0.8)
+plt.tight_layout()
+save_fig(plt, "heatmap_vs_control.png")
+
+# ============================================================
+# 8. Heatmap vs Best
+# ============================================================
+all_entries = [control, *treatments]
+all_labels = [e.label for e in all_entries]
+heatmap_best = np.zeros((len(lengths), len(all_entries)))
+for i, L in enumerate(lengths):
+    means = [np.mean(e.data[L]) for e in all_entries]
+    best = min(means)
+    for j, m in enumerate(means):
+        heatmap_best[i, j] = (m - best) / best * 100
+
+fig, ax = plt.subplots(figsize=(max(8, len(all_entries) * 1.5 + 2), max(4, len(lengths) * 0.6 + 2)))
+im = ax.imshow(heatmap_best, cmap='YlOrRd', aspect='auto', vmin=0)
+for i in range(len(lengths)):
+    for j in range(len(all_entries)):
+        val = heatmap_best[i, j]
+        if val == 0:
+            ax.add_patch(plt.Rectangle((j - 0.5, i - 0.5), 1, 1, fill=True, color='#2ecc71', zorder=2))
+            ax.text(j, i, "\u2713 best", ha='center', va='center', fontsize=9,
+                    color='white', fontweight='bold', zorder=3)
+        else:
+            ax.text(j, i, f"{val:.1f}%", ha='center', va='center', fontsize=9,
+                    color='white' if val > heatmap_best.max() * 0.6 else 'black')
+
+ax.set_xticks(range(len(all_entries)))
+ax.set_xticklabels(all_labels, rotation=45, ha='right')
+ax.set_yticks(range(len(lengths)))
+ax.set_yticklabels([str(L) for L in lengths])
+ax.set_xlabel("Entry")
+ax.set_ylabel("Array Length")
+ax.set_title("% Change vs Best (per length)\nWhite = best, Red = worst", fontweight='bold')
+fig.colorbar(im, ax=ax, label='% slower than best', shrink=0.8)
+plt.tight_layout()
+save_fig(plt, "heatmap_vs_best.png")
+
+# ============================================================
+# 9. Small multiples bar chart (% vs best)
+# ============================================================
+all_entries = [control, *treatments]
+all_labels = [e.label for e in all_entries]
+all_colors = [DATA_COLORS[i] for i in range(len(all_entries))]
+
+# Compute all % vs best values and global max
+grid = np.zeros((len(lengths), len(all_entries)))
+win_counts = [0] * len(all_entries)
+for i, L in enumerate(lengths):
+    means = [np.mean(e.data[L]) for e in all_entries]
+    best = min(means)
+    best_idx = means.index(best)
+    win_counts[best_idx] += 1
+    for j, m in enumerate(means):
+        grid[i, j] = (m - best) / best * 100
+global_max = grid.max() if grid.max() > 0 else 1
+
+n_rows = len(lengths)
+n_cols = len(all_entries)
+cell_h = 1.0
+col_w = 1.6  # width allocated per column
+max_bar_w = col_w * 0.9  # max width a bar can be
+min_bar_w = 0.06  # thin line for best
+pad = 0.05
+
+fig, ax = plt.subplots(figsize=(max(8, n_cols * col_w + 2), max(6, n_rows * 0.65 + 3)))
+
+# Draw segments: width encodes magnitude, centered in each column
+for i in range(n_rows):
+    for j in range(n_cols):
+        val = grid[i, j]
+        cx = j * col_w + col_w / 2
+        cy = i * cell_h + cell_h / 2
+
+        if val == 0:
+            # Best: thin line + label
+            w = min_bar_w
+            ax.add_patch(plt.Rectangle((cx - w / 2, i * cell_h + pad), w, cell_h - 2 * pad,
+                                       fill=True, facecolor='#2ecc71', edgecolor='#2ecc71',
+                                       linewidth=1.5, zorder=2))
+            ax.text(cx, cy, "best", ha='center', va='center', fontsize=8,
+                    fontweight='bold', color='#2ecc71',
+                    bbox=dict(facecolor='white', edgecolor='none', alpha=0.7, pad=1), zorder=3)
+        else:
+            frac = val / global_max if global_max > 0 else 0
+            w = min_bar_w + frac * (max_bar_w - min_bar_w)
+            ax.add_patch(plt.Rectangle((cx - w / 2, i * cell_h + pad), w, cell_h - 2 * pad,
+                                       fill=True, facecolor=all_colors[j], alpha=0.8,
+                                       edgecolor=darken_color(all_colors[j]), linewidth=0.5, zorder=2))
+            ax.text(cx, cy, f"{val:.1f}%", ha='center', va='center', fontsize=7,
+                    color='white' if frac > 0.25 else '#333333', fontweight='bold', zorder=3)
+
+    # Row divider
+    ax.axhline(i * cell_h, color='#dddddd', linewidth=0.5, zorder=0)
+
+# Vertical spine lines connecting segments
+for j in range(n_cols):
+    cx = j * col_w + col_w / 2
+    ax.plot([cx, cx], [0, n_rows * cell_h], color='#cccccc', linewidth=0.5, zorder=0)
+
+# Wins row
+wins_y = n_rows * cell_h + cell_h * 0.4
+ax.axhline(wins_y - 0.1, color='#999999', linewidth=1, zorder=0)
+for j in range(n_cols):
+    cx = j * col_w + col_w / 2
+    ax.text(cx, wins_y + 0.2, f"{win_counts[j]} wins", ha='center', va='center',
+            fontsize=11, fontweight='bold', color=all_colors[j], zorder=3)
+
+# Axes setup
+ax.set_xlim(-0.3, n_cols * col_w + 0.3)
+ax.set_ylim(-0.3, wins_y + 0.6)
+ax.invert_yaxis()
+
+ax.set_xticks([j * col_w + col_w / 2 for j in range(n_cols)])
+ax.set_xticklabels(all_labels, fontsize=11, fontweight='bold')
+ax.xaxis.set_ticks_position('top')
+ax.xaxis.set_label_position('top')
+
+ax.set_yticks([i * cell_h + cell_h / 2 for i in range(n_rows)])
+ax.set_yticklabels([str(L) for L in lengths], fontsize=9, fontweight='bold')
+ax.set_ylabel("Array Length", fontsize=11)
+ax.set_title("% Slower than Best — wider = worse, thin = best\n", fontsize=13, fontweight='bold', pad=20)
+
+ax.spines['top'].set_visible(False)
+ax.spines['right'].set_visible(False)
+ax.spines['bottom'].set_visible(False)
+ax.spines['left'].set_visible(False)
+ax.tick_params(length=0)
+
+plt.tight_layout()
+save_fig(plt, "bars_vs_best.png")
